@@ -2,10 +2,12 @@ services:
   - type: web
     name: stress-support
     runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt && python ml/train_model.py
-    preDeployCommand: python init_db.py
-    startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120
+    # No rootDir: commands below are relative to the repo root so this
+    # works whether deployed via Blueprint or a manually-created Render
+    # Web Service (where Root Directory may be left at its default).
+    buildCommand: pip install -r requirements.txt && python backend/ml/train_model.py
+    preDeployCommand: python backend/init_db.py
+    startCommand: cd backend && gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120
     plan: free
     envVars:
       # Paste your Neon connection string here, or set it in the Render
