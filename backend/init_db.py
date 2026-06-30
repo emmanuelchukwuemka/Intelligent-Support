@@ -138,7 +138,7 @@ def run():
     with db.get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(DDL)
-    print("  ✓ Tables and indexes created (if not already present)")
+    print("  [OK] Tables and indexes created (if not already present)")
 
     # Seed interventions — skip existing rows by name to avoid duplicates.
     for name, itype, desc, severity, rating in INTERVENTIONS:
@@ -150,14 +150,14 @@ def run():
             """,
             (name, itype, desc, severity, rating),
         )
-    print("  ✓ Interventions seeded")
+    print("  [OK] Interventions seeded")
 
     for title, cat, content in ARTICLES:
         db.execute(
             "INSERT INTO knowledge_base (title, category, content) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             (title, cat, content),
         )
-    print("  ✓ Knowledge base articles seeded")
+    print("  [OK] Knowledge base articles seeded")
 
     # Admin account
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
@@ -171,9 +171,9 @@ def run():
             "INSERT INTO users (username, password_hash, email, full_name, role) VALUES (%s, %s, %s, %s, 'admin')",
             (admin_username, hash_password(admin_password), admin_email, "System Administrator"),
         )
-        print(f"  ✓ Admin account created: {admin_username}")
+        print(f"  [OK] Admin account created: {admin_username}")
     else:
-        print(f"  ✓ Admin account already exists: {admin_username}")
+        print(f"  [OK] Admin account already exists: {admin_username}")
 
     print("Database initialisation complete.")
 
