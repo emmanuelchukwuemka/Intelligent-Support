@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Knowledge Base - Admin</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2 id="form-heading">Add Article</h2>
+    <div id="alert-box"></div>
+    <form id="article-form">
+      <input type="hidden" id="resource_id">
+      <label for="title">Title</label>
+      <input type="text" id="title" required>
+
+      <label for="category">Category</label>
+      <input type="text" id="category" placeholder="e.g. Sleep, Education, Workload">
+
+      <label for="content">Content</label>
+      <textarea id="content" required style="min-height:140px;"></textarea>
+
+      <button class="btn" type="submit" id="save-btn">Save Article</button>
+      <button class="btn secondary" type="button" id="cancel-edit-btn" style="display:none;">Cancel Edit</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Existing Articles</h3>
+    <div id="articles-table"><p class="muted">Loading...</p></div>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script>window.SITE_ROOT = "../";</script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+Auth.requireAdmin();
+
+async function loadArticles() {
+  const el = document.getElementById("articles-table");
+  try {
+    const articles = await Api.get("/knowledge");
+    if (!articles.length) {
+      el.innerHTML = `<p class="muted">No articles yet.</p>`;
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Title</th><th>Category</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+          ${articles.map(a => `
+            <tr data-id="${a.resource_id}">
+              <td>${escapeHtml(a.title)}</td>
+              <td>${escapeHtml(a.category || "")}</td>
+              <td>${formatDate(a.created_at)}</td>
+              <td>
+                <button class="btn small secondary edit-btn">Edit</button>
+                <button class="btn small danger delete-btn">Delete</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+
+    el.querySelectorAll("tr[data-id]").forEach(row => {
+      const id = row.dataset.id;
+      row.querySelector(".edit-btn").addEventListener("click", async () => {
+        try {
+          const a = await Api.get(`/knowledge/${id}`);
+          document.getElementById("resource_id").value = a.resource_id;
+          document.getElementById("title").value = a.title;
+          document.getElementById("category").value = a.category || "";
+          document.getElementById("content").value = a.content;
+          document.getElementById("form-heading").textContent = "Edit Article";
+          document.getElementById("save-btn").textContent = "Update Article";
+          document.getElementById("cancel-edit-btn").style.display = "inline-block";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (err) {
+          showAlert(document.getElementById("alert-box"), err.message, "error");
+        }
+      });
+      row.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm("Delete this article?")) return;
+        try {
+          await Api.del(`/admin/knowledge/${id}`);
+          row.remove();
+        } catch (err) {
+          showAlert(document.getElementById("alert-box"), err.message, "error");
+        }
+      });
+    });
+  } catch (err) {
+    el.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById("article-form").reset();
+  document.getElementById("resource_id").value = "";
+  document.getElementById("form-heading").textContent = "Add Article";
+  document.getElementById("save-btn").textContent = "Save Article";
+  document.getElementById("cancel-edit-btn").style.display = "none";
+}
+
+document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
+
+document.getElementById("article-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+  const id = document.getElementById("resource_id").value;
+  const body = {
+    title: document.getElementById("title").value.trim(),
+    category: document.getElementById("category").value.trim(),
+    content: document.getElementById("content").value.trim(),
+  };
+  try {
+    if (id) {
+      await Api.put(`/admin/knowledge/${id}`, body);
+      showAlert(alertBox, "Article updated.", "success");
+    } else {
+      await Api.post("/admin/knowledge", body);
+      showAlert(alertBox, "Article created.", "success");
+    }
+    resetForm();
+    loadArticles();
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+  }
+});
+
+loadArticles();
+</script>
+</body>
+</html>

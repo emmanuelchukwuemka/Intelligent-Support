@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container" style="max-width:420px;">
+  <div class="card">
+    <h2>Login</h2>
+    <div id="alert-box"></div>
+    <form id="login-form">
+      <label for="username">Username</label>
+      <input type="text" id="username" required autofocus>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required>
+
+      <button class="btn" type="submit">Login</button>
+    </form>
+    <p class="muted" style="margin-top:1rem;">No account yet? <a href="register.html">Register</a></p>
+    <p class="muted">Admin demo login: <code>admin</code> / <code>Admin@1234</code></p>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.redirectIfLoggedIn();
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    const data = await Api.post("/auth/login", { username, password });
+    Auth.setSession(data.token, data.user);
+    window.location.href = "dashboard.html";
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+  }
+});
+</script>
+</body>
+</html>

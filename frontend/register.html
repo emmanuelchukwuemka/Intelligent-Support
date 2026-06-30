@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container" style="max-width:480px;">
+  <div class="card">
+    <h2>Create your account</h2>
+    <div id="alert-box"></div>
+    <form id="register-form">
+      <label for="full_name">Full name</label>
+      <input type="text" id="full_name" required>
+
+      <label for="username">Username</label>
+      <input type="text" id="username" minlength="3" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" minlength="6" required>
+
+      <div class="grid-2">
+        <div>
+          <label for="age">Age</label>
+          <input type="number" id="age" min="10" max="120">
+        </div>
+        <div>
+          <label for="gender">Gender</label>
+          <select id="gender">
+            <option value="">Prefer not to say</option>
+            <option>Female</option>
+            <option>Male</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="occupation">Occupation</label>
+      <input type="text" id="occupation" placeholder="e.g. Student, Software Engineer">
+
+      <button class="btn" type="submit">Register</button>
+    </form>
+    <p class="muted" style="margin-top:1rem;">Already have an account? <a href="login.html">Login</a></p>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.redirectIfLoggedIn();
+
+document.getElementById("register-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+
+  const body = {
+    full_name: document.getElementById("full_name").value.trim(),
+    username: document.getElementById("username").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    password: document.getElementById("password").value,
+    age: document.getElementById("age").value || null,
+    gender: document.getElementById("gender").value,
+    occupation: document.getElementById("occupation").value.trim(),
+  };
+
+  try {
+    const data = await Api.post("/auth/register", body);
+    Auth.setSession(data.token, data.user);
+    window.location.href = "dashboard.html";
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - Intelligent Stress Support</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2>Admin Dashboard</h2>
+    <p>
+      <a class="btn secondary" href="users.html">Manage Users</a>
+      <a class="btn secondary" href="knowledge.html">Manage Knowledge Base</a>
+    </p>
+  </div>
+
+  <div class="grid-3" id="stat-cards">
+    <div class="card stat"><div class="value" id="stat-users">&ndash;</div><div class="label">Total users</div></div>
+    <div class="card stat"><div class="value" id="stat-assessments">&ndash;</div><div class="label">Total assessments</div></div>
+    <div class="card stat"><div class="value" id="stat-avg-score">&ndash;</div><div class="label">Average score</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Severity Distribution</h3>
+      <div id="severity-dist"><p class="muted">Loading...</p></div>
+    </div>
+    <div class="card">
+      <h3>Top Stress Categories</h3>
+      <div id="category-dist"><p class="muted">Loading...</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Top-Rated Interventions</h3>
+    <div id="top-interventions"><p class="muted">Loading...</p></div>
+  </div>
+
+  <div class="card">
+    <h3>Recent Assessments</h3>
+    <div id="recent-assessments"><p class="muted">Loading...</p></div>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script>window.SITE_ROOT = "../";</script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+Auth.requireAdmin();
+
+async function load() {
+  try {
+    const r = await Api.get("/admin/reports");
+    document.getElementById("stat-users").textContent = r.total_users;
+    document.getElementById("stat-assessments").textContent = r.total_assessments;
+    document.getElementById("stat-avg-score").textContent = r.average_score ?? "N/A";
+
+    document.getElementById("severity-dist").innerHTML = r.severity_distribution.length
+      ? `<table><tbody>${r.severity_distribution.map(s => `<tr><td><span class="${severityBadgeClass(s.severity_level)}">${s.severity_level}</span></td><td>${s.c}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted">No data yet.</p>`;
+
+    document.getElementById("category-dist").innerHTML = r.category_distribution.length
+      ? `<table><tbody>${r.category_distribution.map(c => `<tr><td>${escapeHtml(c.stress_category || "Unknown")}</td><td>${c.c}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted">No data yet.</p>`;
+
+    document.getElementById("top-interventions").innerHTML = r.top_interventions.length
+      ? `<table><thead><tr><th>Intervention</th><th>Effectiveness</th></tr></thead><tbody>${r.top_interventions.map(i => `<tr><td>${escapeHtml(i.intervention_name)}</td><td>${i.effectiveness_rating}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted">No data yet.</p>`;
+
+    document.getElementById("recent-assessments").innerHTML = r.recent_assessments.length
+      ? `<table><thead><tr><th>User</th><th>Severity</th><th>Category</th><th>Date</th></tr></thead><tbody>${r.recent_assessments.map(a => `<tr><td>${escapeHtml(a.username)}</td><td><span class="${severityBadgeClass(a.severity_level)}">${a.severity_level}</span></td><td>${escapeHtml(a.stress_category || "")}</td><td>${formatDate(a.assessment_date)}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted">No assessments yet.</p>`;
+  } catch (err) {
+    document.querySelector(".container").insertAdjacentHTML("afterbegin", `<div class="alert error">${escapeHtml(err.message)}</div>`);
+  }
+}
+load();
+</script>
+</body>
+</html>

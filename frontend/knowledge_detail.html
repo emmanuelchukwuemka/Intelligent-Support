@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Article - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <p><a href="knowledge.html">&larr; Back to Knowledge Base</a></p>
+  <div class="card" id="article-card"><p class="muted">Loading...</p></div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.requireAuth();
+const id = new URLSearchParams(window.location.search).get("id");
+
+async function load() {
+  const el = document.getElementById("article-card");
+  try {
+    const a = await Api.get(`/knowledge/${id}`);
+    el.innerHTML = `
+      <div class="muted">${escapeHtml(a.category || "General")} &middot; ${formatDate(a.created_at)}</div>
+      <h2>${escapeHtml(a.title)}</h2>
+      <p style="white-space:pre-wrap;">${escapeHtml(a.content)}</p>`;
+  } catch (err) {
+    el.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>

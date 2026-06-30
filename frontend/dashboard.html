@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2 id="welcome-heading">Welcome</h2>
+    <p class="muted">Your personal stress management dashboard.</p>
+    <p>
+      <a class="btn" href="assessment.html">Take Stress Assessment</a>
+      <a class="btn secondary" href="progress.html">View Progress</a>
+    </p>
+  </div>
+
+  <div class="grid-3" id="stat-cards">
+    <div class="card stat"><div class="value" id="stat-assessments">&ndash;</div><div class="label">Assessments taken</div></div>
+    <div class="card stat"><div class="value" id="stat-latest-severity">&ndash;</div><div class="label">Latest severity</div></div>
+    <div class="card stat"><div class="value" id="stat-trend">&ndash;</div><div class="label">7-day stress trend</div></div>
+  </div>
+
+  <div class="card">
+    <h3>Recent Assessments</h3>
+    <div id="recent-assessments"><p class="muted">Loading...</p></div>
+    <p><a href="history.html">View full history &rarr;</a></p>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.requireAuth();
+document.getElementById("welcome-heading").textContent = "Welcome, " + (Auth.getUser()?.full_name || Auth.getUser()?.username || "");
+
+async function load() {
+  try {
+    const history = await Api.get("/assessment/history");
+    document.getElementById("stat-assessments").textContent = history.length;
+    if (history.length) {
+      const latest = history[0];
+      document.getElementById("stat-latest-severity").innerHTML = `<span class="${severityBadgeClass(latest.severity_level)}">${latest.severity_level}</span>`;
+    } else {
+      document.getElementById("stat-latest-severity").textContent = "N/A";
+    }
+
+    const recentEl = document.getElementById("recent-assessments");
+    if (!history.length) {
+      recentEl.innerHTML = `<p class="muted">You haven't taken an assessment yet.</p>`;
+    } else {
+      const rows = history.slice(0, 5).map(a => `
+        <tr>
+          <td>${formatDate(a.assessment_date)}</td>
+          <td>${a.total_score}</td>
+          <td><span class="${severityBadgeClass(a.severity_level)}">${a.severity_level}</span></td>
+          <td>${escapeHtml(a.stress_category || "")}</td>
+          <td><a href="results.html?id=${a.assessment_id}">View</a></td>
+        </tr>`).join("");
+      recentEl.innerHTML = `
+        <table>
+          <thead><tr><th>Date</th><th>Score</th><th>Severity</th><th>Category</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+  } catch (err) {
+    document.getElementById("recent-assessments").innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+
+  try {
+    const summary = await Api.get("/progress/summary");
+    document.getElementById("stat-trend").textContent = summary.trend ? summary.trend : "Not enough data";
+  } catch (err) {
+    document.getElementById("stat-trend").textContent = "N/A";
+  }
+}
+load();
+</script>
+</body>
+</html>

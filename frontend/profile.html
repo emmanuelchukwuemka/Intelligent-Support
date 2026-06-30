@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container" style="max-width:520px;">
+  <div class="card">
+    <h2>Your Profile</h2>
+    <div id="alert-box"></div>
+    <form id="profile-form">
+      <label>Username</label>
+      <input type="text" id="username" disabled>
+
+      <label>Email</label>
+      <input type="text" id="email" disabled>
+
+      <label for="full_name">Full name</label>
+      <input type="text" id="full_name">
+
+      <div class="grid-2">
+        <div>
+          <label for="age">Age</label>
+          <input type="number" id="age" min="10" max="120">
+        </div>
+        <div>
+          <label for="gender">Gender</label>
+          <select id="gender">
+            <option value="">Prefer not to say</option>
+            <option>Female</option>
+            <option>Male</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="occupation">Occupation</label>
+      <input type="text" id="occupation">
+
+      <button class="btn" type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.requireAuth();
+
+async function load() {
+  try {
+    const u = await Api.get("/auth/me");
+    document.getElementById("username").value = u.username;
+    document.getElementById("email").value = u.email;
+    document.getElementById("full_name").value = u.full_name || "";
+    document.getElementById("age").value = u.age || "";
+    document.getElementById("gender").value = u.gender || "";
+    document.getElementById("occupation").value = u.occupation || "";
+  } catch (err) {
+    showAlert(document.getElementById("alert-box"), err.message, "error");
+  }
+}
+load();
+
+document.getElementById("profile-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+  try {
+    const updated = await Api.put("/auth/me", {
+      full_name: document.getElementById("full_name").value.trim(),
+      age: document.getElementById("age").value || null,
+      gender: document.getElementById("gender").value,
+      occupation: document.getElementById("occupation").value.trim(),
+    });
+    const user = Auth.getUser();
+    user.full_name = updated.full_name;
+    Auth.setSession(Auth.getToken(), user);
+    showAlert(alertBox, "Profile updated.", "success");
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+  }
+});
+</script>
+</body>
+</html>

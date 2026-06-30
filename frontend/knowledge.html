@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Base - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2>Knowledge Base</h2>
+    <div class="grid-2">
+      <div>
+        <label for="search">Search</label>
+        <input type="text" id="search" placeholder="Search articles...">
+      </div>
+      <div>
+        <label for="category">Category</label>
+        <select id="category"><option value="">All categories</option></select>
+      </div>
+    </div>
+  </div>
+  <div id="articles-list"><p class="muted">Loading...</p></div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.requireAuth();
+
+async function loadCategories() {
+  try {
+    const cats = await Api.get("/knowledge/categories");
+    const sel = document.getElementById("category");
+    cats.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+  } catch (err) { /* non-fatal */ }
+}
+
+async function loadArticles() {
+  const el = document.getElementById("articles-list");
+  const q = document.getElementById("search").value.trim();
+  const category = document.getElementById("category").value;
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (category) params.set("category", category);
+
+  el.innerHTML = `<p class="muted">Loading...</p>`;
+  try {
+    const articles = await Api.get("/knowledge" + (params.toString() ? "?" + params.toString() : ""));
+    if (!articles.length) {
+      el.innerHTML = `<p class="muted">No articles found.</p>`;
+      return;
+    }
+    el.innerHTML = articles.map(a => `
+      <div class="card">
+        <div class="muted">${escapeHtml(a.category || "General")}</div>
+        <h3><a href="knowledge_detail.html?id=${a.resource_id}">${escapeHtml(a.title)}</a></h3>
+        <p>${escapeHtml(a.content.slice(0, 180))}${a.content.length > 180 ? "..." : ""}</p>
+      </div>`).join("");
+  } catch (err) {
+    el.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+document.getElementById("search").addEventListener("input", debounce(loadArticles, 300));
+document.getElementById("category").addEventListener("change", loadArticles);
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+loadCategories();
+loadArticles();
+</script>
+</body>
+</html>

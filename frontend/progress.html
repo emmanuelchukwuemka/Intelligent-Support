@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progress Tracking - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2>Log Today's Check-in</h2>
+    <div id="alert-box"></div>
+    <form id="progress-form">
+      <div class="grid-2">
+        <div>
+          <label for="stress_level">Stress level (1 = very low, 10 = very high)</label>
+          <input type="number" id="stress_level" min="1" max="10" required>
+        </div>
+        <div>
+          <label for="mood_rating">Mood rating (1 = very low, 10 = very high)</label>
+          <input type="number" id="mood_rating" min="1" max="10" required>
+        </div>
+      </div>
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" placeholder="What's on your mind today?"></textarea>
+      <button class="btn" type="submit">Save Check-in</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Trend</h3>
+    <svg id="trend-chart" width="100%" height="220"></svg>
+  </div>
+
+  <div class="card">
+    <h3>History</h3>
+    <div id="progress-table"><p class="muted">Loading...</p></div>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/chart.js"></script>
+<script>
+Auth.requireAuth();
+
+async function load() {
+  const tableEl = document.getElementById("progress-table");
+  try {
+    const rows = await Api.get("/progress");
+    if (!rows.length) {
+      tableEl.innerHTML = `<p class="muted">No check-ins logged yet.</p>`;
+    } else {
+      const trs = rows.slice().reverse().map(r => `
+        <tr>
+          <td>${formatDate(r.tracking_date)}</td>
+          <td>${r.stress_level}</td>
+          <td>${r.mood_rating}</td>
+          <td>${escapeHtml(r.notes || "")}</td>
+        </tr>`).join("");
+      tableEl.innerHTML = `
+        <table>
+          <thead><tr><th>Date</th><th>Stress</th><th>Mood</th><th>Notes</th></tr></thead>
+          <tbody>${trs}</tbody>
+        </table>`;
+    }
+
+    const chartEl = document.getElementById("trend-chart");
+    const stressSeries = rows.map((r, i) => ({ y: r.stress_level, label: formatDate(r.tracking_date) }));
+    const moodSeries = rows.map((r, i) => ({ y: r.mood_rating, label: formatDate(r.tracking_date) }));
+    renderLineChart(chartEl, [
+      { name: "Stress level", data: stressSeries },
+      { name: "Mood rating", data: moodSeries },
+    ]);
+  } catch (err) {
+    tableEl.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+}
+load();
+
+document.getElementById("progress-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+  const body = {
+    stress_level: parseInt(document.getElementById("stress_level").value, 10),
+    mood_rating: parseInt(document.getElementById("mood_rating").value, 10),
+    notes: document.getElementById("notes").value.trim(),
+  };
+  try {
+    await Api.post("/progress", body);
+    showAlert(alertBox, "Check-in saved.", "success");
+    document.getElementById("progress-form").reset();
+    load();
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2>Submit Feedback</h2>
+    <p class="muted">Rate the system or a specific intervention, and tell us what's working or not.</p>
+    <div id="alert-box"></div>
+    <form id="feedback-form">
+      <label for="intervention">Intervention (optional)</label>
+      <select id="intervention"><option value="">General feedback (not about a specific intervention)</option></select>
+
+      <label for="rating">Rating</label>
+      <select id="rating">
+        <option value="">No rating</option>
+        <option value="5">5 - Excellent</option>
+        <option value="4">4 - Good</option>
+        <option value="3">3 - Okay</option>
+        <option value="2">2 - Poor</option>
+        <option value="1">1 - Very poor</option>
+      </select>
+
+      <label for="comments">Comments</label>
+      <textarea id="comments" placeholder="Tell us about your experience..."></textarea>
+
+      <button class="btn" type="submit">Submit Feedback</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Your Past Feedback</h3>
+    <div id="feedback-list"><p class="muted">Loading...</p></div>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.requireAuth();
+
+async function loadInterventions() {
+  try {
+    // Interventions aren't public-listed; pull from the most recent
+    // assessment's recommendations as a reasonable option set, falling
+    // back to nothing if the user has none yet.
+    const history = await Api.get("/assessment/history");
+    if (history.length) {
+      const recs = await Api.get(`/recommendations/${history[0].assessment_id}`);
+      const sel = document.getElementById("intervention");
+      recs.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.intervention_id;
+        opt.textContent = r.intervention_name;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (err) { /* non-fatal */ }
+}
+
+async function loadMyFeedback() {
+  const el = document.getElementById("feedback-list");
+  try {
+    const rows = await Api.get("/feedback/mine");
+    if (!rows.length) {
+      el.innerHTML = `<p class="muted">You haven't submitted feedback yet.</p>`;
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Date</th><th>Intervention</th><th>Rating</th><th>Comments</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${formatDate(r.submitted_at)}</td>
+              <td>${escapeHtml(r.intervention_name || "General")}</td>
+              <td>${r.rating !== null ? r.rating + "/5" : "-"}</td>
+              <td>${escapeHtml(r.comments || "")}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    el.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+document.getElementById("feedback-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+  const interventionId = document.getElementById("intervention").value;
+  const rating = document.getElementById("rating").value;
+  const comments = document.getElementById("comments").value.trim();
+
+  try {
+    await Api.post("/feedback", {
+      intervention_id: interventionId ? parseInt(interventionId) : null,
+      rating: rating ? parseInt(rating) : null,
+      comments,
+    });
+    showAlert(alertBox, "Thanks for your feedback!", "success");
+    document.getElementById("feedback-form").reset();
+    loadMyFeedback();
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+  }
+});
+
+loadInterventions();
+loadMyFeedback();
+</script>
+</body>
+</html>

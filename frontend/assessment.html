@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stress Assessment - Intelligent Stress Support</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+<div class="container">
+  <div class="card">
+    <h2>Stress Assessment</h2>
+    <p class="muted">For each statement, indicate how often it applies to you. This uses the same
+      10-item, 0&ndash;3 scale described in Appendix A of the project report.</p>
+    <div id="alert-box"></div>
+    <form id="assessment-form">
+      <div id="questions-list"><p class="muted">Loading questions...</p></div>
+      <button class="btn" type="submit" id="submit-btn">Submit Assessment</button>
+    </form>
+  </div>
+</div>
+<div id="footer-placeholder"></div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+Auth.requireAuth();
+
+const SCALE_LABELS = { 0: "Never", 1: "Sometimes", 2: "Often", 3: "Almost Always" };
+
+async function loadQuestions() {
+  const listEl = document.getElementById("questions-list");
+  try {
+    const data = await Api.get("/assessment/questions");
+    listEl.innerHTML = data.questions.map(q => `
+      <div class="q-item">
+        <div><strong>${q.id}.</strong> ${escapeHtml(q.text)}</div>
+        <div class="scale-options">
+          ${[0,1,2,3].map(v => `
+            <label>
+              <input type="radio" name="q${q.id}" value="${v}" ${v===0 ? "checked" : ""}>
+              ${SCALE_LABELS[v]}
+            </label>`).join("")}
+        </div>
+      </div>`).join("");
+  } catch (err) {
+    listEl.innerHTML = `<div class="alert error">${escapeHtml(err.message)}</div>`;
+  }
+}
+loadQuestions();
+
+document.getElementById("assessment-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("alert-box");
+  alertBox.innerHTML = "";
+
+  const responses = [];
+  for (let i = 1; i <= 10; i++) {
+    const checked = document.querySelector(`input[name="q${i}"]:checked`);
+    if (!checked) {
+      showAlert(alertBox, `Please answer question ${i}.`, "error");
+      return;
+    }
+    responses.push(parseInt(checked.value, 10));
+  }
+
+  const submitBtn = document.getElementById("submit-btn");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting...";
+
+  try {
+    const result = await Api.post("/assessment/submit", { responses });
+    window.location.href = "results.html?id=" + result.assessment_id;
+  } catch (err) {
+    showAlert(alertBox, err.message, "error");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit Assessment";
+  }
+});
+</script>
+</body>
+</html>
